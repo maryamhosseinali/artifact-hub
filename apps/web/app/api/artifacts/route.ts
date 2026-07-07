@@ -52,7 +52,10 @@ export async function POST(request: Request) {
     );
   }
 
-  const content = type === "html" ? await file.text() : Buffer.from(await file.arrayBuffer()).toString("base64");
+  const content =
+    type === "html"
+      ? await file.text()
+      : `data:${file.type};base64,${Buffer.from(await file.arrayBuffer()).toString("base64")}`;
 
   const title = form.get("title");
   const description = form.get("description");
@@ -62,14 +65,19 @@ export async function POST(request: Request) {
       ? tagsRaw.split(",").map((t) => t.trim()).filter(Boolean)
       : undefined;
 
-  const artifact = await createArtifact({
-    content,
-    type,
-    title: typeof title === "string" && title.trim() ? title.trim() : undefined,
-    description: typeof description === "string" && description.trim() ? description.trim() : undefined,
-    tags,
-    sourceTool: "web",
-  });
+  try {
+    const artifact = await createArtifact({
+      content,
+      type,
+      title: typeof title === "string" && title.trim() ? title.trim() : undefined,
+      description: typeof description === "string" && description.trim() ? description.trim() : undefined,
+      tags,
+      sourceTool: "web",
+    });
 
-  return Response.json({ artifact }, { status: 201 });
+    return Response.json({ artifact }, { status: 201 });
+  } catch (error) {
+    console.error("Failed to create artifact", error);
+    return Response.json({ error: "Failed to publish artifact. Please try again." }, { status: 500 });
+  }
 }

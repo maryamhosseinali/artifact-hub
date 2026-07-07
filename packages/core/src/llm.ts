@@ -91,7 +91,30 @@ export interface FeedbackComment {
   createdAt: Date;
 }
 
-export async function summarizeFeedback(comments: FeedbackComment[]): Promise<string> {
+export type FeedbackSummaryPreset = "overview" | "action-items" | "sentiment";
+
+const PRESET_INSTRUCTIONS: Record<FeedbackSummaryPreset, string> = {
+  overview:
+    "Summarize the following reviewer comments on a shared artifact into: " +
+    "(1) recurring themes, (2) concrete action items, (3) any conflicting opinions.",
+  "action-items":
+    "Read the following reviewer comments on a shared artifact and extract only the concrete, " +
+    "actionable changes reviewers are requesting. Return a prioritized bullet list — skip praise, " +
+    "chit-chat, and anything that isn't an actionable request.",
+  sentiment:
+    "Read the following reviewer comments on a shared artifact and assess overall sentiment: " +
+    "the balance of praise vs. criticism, tone, and any notably strong reactions (positive or negative).",
+};
+
+export interface SummarizeFeedbackOptions {
+  preset?: FeedbackSummaryPreset;
+  customPrompt?: string;
+}
+
+export async function summarizeFeedback(
+  comments: FeedbackComment[],
+  options: SummarizeFeedbackOptions = {},
+): Promise<string> {
   if (comments.length === 0) {
     return "No feedback yet.";
   }
@@ -99,6 +122,9 @@ export async function summarizeFeedback(comments: FeedbackComment[]): Promise<st
   const transcript = comments
     .map((c) => `- ${c.authorName} (${c.createdAt.toISOString()}): ${c.body}`)
     .join("\n");
+
+  const instruction =
+    options.customPrompt?.trim() || PRESET_INSTRUCTIONS[options.preset ?? "overview"];
 
   const response = await anthropic().messages.create({
     model: MODEL,
@@ -109,10 +135,7 @@ export async function summarizeFeedback(comments: FeedbackComment[]): Promise<st
       {
         role: "user",
         content:
-          "Summarize the following reviewer comments on a shared artifact into: " +
-          "(1) recurring themes, (2) concrete action items, (3) any conflicting opinions. " +
-          "Keep it under 200 words, use markdown headers.\n\n" +
-          transcript,
+          `${instruction} Keep it under 200 words, use markdown headers.\n\n` + transcript,
       },
     ],
   });

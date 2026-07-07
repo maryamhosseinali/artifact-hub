@@ -9,6 +9,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 COPY apps/mcp-server/package.json apps/mcp-server/package.json
 COPY packages/core/package.json packages/core/package.json
+COPY packages/core/prisma packages/core/prisma
 
 RUN npm install --workspaces --include-workspace-root
 

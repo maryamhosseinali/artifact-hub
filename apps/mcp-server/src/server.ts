@@ -189,10 +189,20 @@ function buildServer(): McpServer {
     {
       title: "Get feedback summary",
       description: "Summarize reviewer comments on an artifact into themes and action items.",
-      inputSchema: { artifact_id: z.string() },
+      inputSchema: {
+        artifact_id: z.string(),
+        preset: z
+          .enum(["overview", "action-items", "sentiment"])
+          .optional()
+          .describe("Summary focus. Defaults to a general overview."),
+        custom_prompt: z
+          .string()
+          .optional()
+          .describe("Custom instructions for the summary, overrides preset if given."),
+      },
     },
-    async ({ artifact_id }) => {
-      const summary = await getFeedbackSummary(artifact_id);
+    async ({ artifact_id, preset, custom_prompt }) => {
+      const summary = await getFeedbackSummary(artifact_id, { preset, customPrompt: custom_prompt });
       return { content: [{ type: "text", text: summary }] };
     },
   );

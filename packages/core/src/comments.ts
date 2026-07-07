@@ -1,5 +1,6 @@
 import { prisma } from "./db";
 import { summarizeFeedback } from "./llm";
+import type { SummarizeFeedbackOptions } from "./llm";
 import type { CommentInput } from "./types";
 
 export async function addComment(input: CommentInput) {
@@ -19,7 +20,10 @@ export async function listComments(artifactId: string) {
   });
 }
 
-export async function getFeedbackSummary(artifactId: string): Promise<string> {
+export async function getFeedbackSummary(
+  artifactId: string,
+  options?: SummarizeFeedbackOptions,
+): Promise<string> {
   const comments = await listComments(artifactId);
-  return summarizeFeedback(comments);
+  return summarizeFeedback(comments, options);
 }
