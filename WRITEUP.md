@@ -36,13 +36,12 @@ AI-generated artifacts (HTML, images, PDFs):
 
 ## What I explicitly did not build (and why)
 
-- **Multi-user auth / RBAC** — single shared workspace, one static bearer
-  token gates the MCP server. Out of scope for the timebox; the interesting
-  parts of this exercise (MCP integration, LLM enrichment, share-link
-  mechanics) don't need it, and building real auth well is its own project.
-- **OAuth for MCP** — a static bearer token is enough to demonstrate the
-  MCP integration; wiring a full OAuth flow would have eaten the day without
-  changing what's being evaluated.
+- **Multi-user auth / RBAC** — single shared workspace; the MCP server now
+  has real OAuth (see below), but there's still only one shared secret behind
+  it, not individual user accounts. Out of scope for the timebox; the
+  interesting parts of this exercise (MCP integration, LLM enrichment,
+  share-link mechanics) don't need it, and building real per-user auth well
+  is its own project.
 - **Real-time collaboration/notifications, artifact version history, rich
   comment editing/threading/reactions** — all explicitly out of scope per the
   brief; flat comments and a simple publish flow are enough to exercise the
@@ -122,26 +121,32 @@ footgun to explain away later.
 
 ## MCP auth
 
-Single static bearer token, checked via the MCP SDK's `requireBearerAuth`
-middleware with a trivial token verifier (no OAuth). A reviewer connects via:
+Real OAuth 2.1, not a static bearer token — the server implements the full
+MCP authorization flow (metadata discovery, Dynamic Client Registration,
+PKCE-based authorize/token/refresh/revoke), mounted via the SDK's own
+`mcpAuthRouter` (`apps/mcp-server/src/oauth.ts`). This is a single-tenant
+deployment though, not a multi-user identity system: there are no user
+accounts, so the "login" is a one-time browser consent screen that asks for
+one shared secret (`MCP_AUTHORIZE_SECRET`) before issuing real, short-lived,
+per-session tokens. The implementation is adapted from the SDK's own
+reference `demoInMemoryOAuthProvider` — that reference example auto-approves
+every authorization request with no gate at all ("simulate a user login");
+the only meaningful addition here is that actual secret check before a code
+is ever issued.
 
-- **Claude Desktop → Settings → Connectors → Add custom connector** — paste
-  the server URL, paste the token under Advanced settings.
-- **Manual `claude_desktop_config.json`:**
-  ```json
-  {
-    "mcpServers": {
-      "artifact-hub": {
-        "url": "https://<mcp-server>.up.railway.app/mcp",
-        "headers": { "Authorization": "Bearer <token>" }
-      }
-    }
-  }
-  ```
-- Or via `mcp-remote` if the client doesn't support custom headers directly:
-  ```
-  npx -y mcp-remote https://<mcp-server>.up.railway.app/mcp --header "Authorization: Bearer <token>"
-  ```
+A reviewer connects via **Claude Desktop → Settings → Connectors → Add custom
+connector** — just the server URL, nothing else. Claude Desktop discovers the
+OAuth metadata automatically, opens a browser tab for the one-time consent
+screen, and asks for the shared secret (provided separately). After that it
+holds a normal access/refresh token pair like any OAuth client — no header
+to hand-configure.
+
+Known, deliberate limitations of this single-tenant design:
+- Tokens and registered clients live in memory and are lost on redeploy —
+  the same tradeoff as the in-memory MCP session `transports` map.
+- Client registration itself is open (anyone can register a client via DCR,
+  per the public-client model most MCP clients use); the actual security
+  boundary is the secret check in the consent step, not client registration.
 
 ## Where and why the LLM is used
 

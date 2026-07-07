@@ -37,7 +37,6 @@ next-env.d.ts
 
 # prisma
 packages/core/generated/
-.env*
 
 # local Claude Code tool state (contains local permission approvals, may include secrets)
 .claude/

@@ -39,18 +39,22 @@ A step-by-step walkthrough in lieu of a screen recording. Replace
 ## 5. MCP server in Claude Desktop — ~1.5 min
 
 1. Claude Desktop → Settings → Connectors → Add custom connector.
-2. URL: `<MCP_URL>/mcp`. Under Advanced settings, add header
-   `Authorization: Bearer <token>` (token provided separately).
-3. Start a new chat and ask Claude to, e.g., "list the artifacts in Artifact
+2. URL: `<MCP_URL>/mcp` — that's it, no header to configure. Claude Desktop
+   discovers the server's OAuth metadata automatically and opens a browser
+   tab for a one-time consent screen.
+3. On the consent screen, enter the shared access secret (provided
+   separately) and click Authorize. Claude Desktop now holds a real
+   access/refresh token pair for this server.
+4. Start a new chat and ask Claude to, e.g., "list the artifacts in Artifact
    Hub" or "search Artifact Hub for X" — Claude calls `list_artifacts` /
    `search_artifacts` live against the same database as the web app.
-4. Ask Claude to "publish an HTML snippet that says Hello World to Artifact
+5. Ask Claude to "publish an HTML snippet that says Hello World to Artifact
    Hub" — this calls `publish_artifact`, which uploads the content, generates
    metadata (including the auto-assigned folder), and returns a link back
    into the web app you were just looking at.
-5. Ask Claude to "list artifacts in the Engineering folder" — this calls
+6. Ask Claude to "list artifacts in the Engineering folder" — this calls
    `list_artifacts` with the new `folder` filter, same taxonomy as the web UI.
-6. Ask Claude to "summarize the feedback on artifact <id>" or "create a share
+7. Ask Claude to "summarize the feedback on artifact <id>" or "create a share
    link for artifact <id> that expires in an hour" to exercise the remaining
    two tools.
 

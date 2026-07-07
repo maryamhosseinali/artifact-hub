@@ -5,9 +5,8 @@ import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { requireBearerAuth } from "@modelcontextprotocol/sdk/server/auth/middleware/bearerAuth.js";
-import { InvalidTokenError } from "@modelcontextprotocol/sdk/server/auth/errors.js";
+import { mcpAuthRouter } from "@modelcontextprotocol/sdk/server/auth/router.js";
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
-import type { OAuthTokenVerifier } from "@modelcontextprotocol/sdk/server/auth/provider.js";
 import {
   createArtifact,
   createShareLink,
@@ -18,33 +17,24 @@ import {
   type ArtifactType,
   type ArtifactFolder,
 } from "core";
+import { ArtifactHubAuthProvider } from "./oauth.js";
 
 const PORT = process.env.PORT ? Number(process.env.PORT) : 3001;
-const BEARER_TOKEN = process.env.MCP_BEARER_TOKEN;
+const AUTHORIZE_SECRET = process.env.MCP_AUTHORIZE_SECRET;
+const MCP_PUBLIC_URL = process.env.MCP_PUBLIC_URL;
 const WEB_BASE_URL = process.env.WEB_BASE_URL ?? "http://localhost:3000";
 
-if (!BEARER_TOKEN) {
-  console.error("MCP_BEARER_TOKEN env var is required");
+if (!AUTHORIZE_SECRET) {
+  console.error("MCP_AUTHORIZE_SECRET env var is required");
+  process.exit(1);
+}
+if (!MCP_PUBLIC_URL) {
+  console.error("MCP_PUBLIC_URL env var is required (public HTTPS URL of this deployment)");
   process.exit(1);
 }
 
-const NEVER_EXPIRES = Date.now() / 1000 + 100 * 365 * 24 * 60 * 60;
-
-const tokenVerifier: OAuthTokenVerifier = {
-  async verifyAccessToken(token: string) {
-    if (token !== BEARER_TOKEN) {
-      throw new InvalidTokenError("Invalid bearer token");
-    }
-    return {
-      token,
-      clientId: "artifact-hub-client",
-      scopes: ["artifacts"],
-      expiresAt: NEVER_EXPIRES,
-    };
-  },
-};
-
-const authMiddleware = requireBearerAuth({ verifier: tokenVerifier });
+const authProvider = new ArtifactHubAuthProvider(AUTHORIZE_SECRET);
+const authMiddleware = requireBearerAuth({ verifier: authProvider });
 
 function buildServer(): McpServer {
   const server = new McpServer({ name: "artifact-hub", version: "1.0.0" });
@@ -227,6 +217,29 @@ app.use(
   }),
 );
 app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
+
+// Standard MCP OAuth endpoints (metadata discovery, dynamic client
+// registration, authorize, token, revoke) — see src/oauth.ts for the
+// provider backing this.
+app.use(
+  mcpAuthRouter({
+    provider: authProvider,
+    issuerUrl: new URL(MCP_PUBLIC_URL),
+    scopesSupported: ["artifacts"],
+  }),
+);
+
+app.post("/authorize/approve", async (req, res) => {
+  try {
+    await authProvider.approve(req, res);
+  } catch (error) {
+    console.error("Authorization approval failed:", error);
+    if (!res.headersSent) {
+      res.status(400).send(`Authorization failed: ${error instanceof Error ? error.message : "unknown error"}`);
+    }
+  }
+});
 
 const transports: Record<string, StreamableHTTPServerTransport> = {};
 
