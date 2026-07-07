@@ -21,6 +21,7 @@ import { ArtifactHubAuthProvider } from "./oauth.js";
 
 const PORT = process.env.PORT ? Number(process.env.PORT) : 3001;
 const AUTHORIZE_SECRET = process.env.MCP_AUTHORIZE_SECRET;
+const CLIENT_SECRET = process.env.MCP_CLIENT_SECRET;
 const MCP_PUBLIC_URL = process.env.MCP_PUBLIC_URL;
 const WEB_BASE_URL = process.env.WEB_BASE_URL ?? "http://localhost:3000";
 
@@ -28,12 +29,16 @@ if (!AUTHORIZE_SECRET) {
   console.error("MCP_AUTHORIZE_SECRET env var is required");
   process.exit(1);
 }
+if (!CLIENT_SECRET) {
+  console.error("MCP_CLIENT_SECRET env var is required");
+  process.exit(1);
+}
 if (!MCP_PUBLIC_URL) {
   console.error("MCP_PUBLIC_URL env var is required (public HTTPS URL of this deployment)");
   process.exit(1);
 }
 
-const authProvider = new ArtifactHubAuthProvider(AUTHORIZE_SECRET);
+const authProvider = new ArtifactHubAuthProvider(AUTHORIZE_SECRET, CLIENT_SECRET);
 const authMiddleware = requireBearerAuth({ verifier: authProvider });
 
 function buildServer(): McpServer {

@@ -135,18 +135,31 @@ the only meaningful addition here is that actual secret check before a code
 is ever issued.
 
 A reviewer connects via **Claude Desktop → Settings → Connectors → Add custom
-connector** — just the server URL, nothing else. Claude Desktop discovers the
-OAuth metadata automatically, opens a browser tab for the one-time consent
-screen, and asks for the shared secret (provided separately). After that it
-holds a normal access/refresh token pair like any OAuth client — no header
-to hand-configure.
+connector** — the server URL, plus the one pre-registered Client ID/Secret if
+the connector UI asks for them up front instead of self-registering via DCR
+(both paths are supported; see below). Either way, a browser tab opens for
+the one-time consent screen asking for the shared access secret (provided
+separately). After that the client holds a normal access/refresh token pair
+like any OAuth client.
+
+Two ways a client can register:
+1. **Dynamic Client Registration** (`POST /register`) — most MCP clients do
+   this transparently; nothing to configure manually.
+2. **A pre-registered well-known client** (`client_id: "artifact-hub"` +
+   a fixed `client_secret`) — for UIs that want a Client ID/Secret pair up
+   front rather than performing DCR themselves. Since this client is entered
+   manually rather than self-registered, the server has no way to know in
+   advance what redirect URI the connecting app will actually use, so its
+   redirect_uri check is intentionally a no-op — same threat model as DCR's
+   open registration, just applied to a fixed client_id.
 
 Known, deliberate limitations of this single-tenant design:
 - Tokens and registered clients live in memory and are lost on redeploy —
   the same tradeoff as the in-memory MCP session `transports` map.
-- Client registration itself is open (anyone can register a client via DCR,
-  per the public-client model most MCP clients use); the actual security
-  boundary is the secret check in the consent step, not client registration.
+- Neither DCR clients nor the well-known client have their redirect_uri
+  meaningfully restricted (DCR clients register their own; the well-known
+  client accepts any); the actual security boundary in both cases is the
+  secret check in the consent step, not client/redirect registration.
 
 ## Where and why the LLM is used
 

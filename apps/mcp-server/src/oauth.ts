@@ -30,6 +30,27 @@ function escapeHtml(value: string): string {
     .replace(/'/g, "&#39;");
 }
 
+/** The one pre-registered client_id/secret handed out for manual entry (e.g.
+ * Claude Desktop's "Client ID" / "Client Secret" connector fields), alongside
+ * open Dynamic Client Registration for clients that support it automatically. */
+export const WELL_KNOWN_CLIENT_ID = "artifact-hub";
+
+/**
+ * A `redirect_uris` array that matches literally anything. Used only for the
+ * pre-registered well-known client: since it's entered manually rather than
+ * self-registered via DCR, we can't know in advance what redirect_uri the
+ * connecting app will actually use (only its host gets RFC 8252 loopback
+ * relaxation — the path must match exactly, and we have no way to predict a
+ * given desktop client's callback path). The one real access-control
+ * boundary for this client remains the secret-gated consent screen, exactly
+ * as already documented for openly self-registered DCR clients.
+ */
+function acceptAnyRedirectUri(placeholder: string): string[] {
+  const uris = [placeholder] as string[];
+  Object.defineProperty(uris, "some", { value: () => true, enumerable: false });
+  return uris;
+}
+
 class InMemoryClientsStore implements OAuthRegisteredClientsStore {
   private clients = new Map<string, OAuthClientInformationFull>();
 
@@ -65,12 +86,21 @@ interface StoredToken {
  * unmodified reference demo auto-approves every authorize request with no
  * gate at all.
  *
+ * Two ways to connect a client:
+ * 1. Dynamic Client Registration (`POST /register`) — most MCP clients do
+ *    this automatically; no manual configuration needed.
+ * 2. The pre-registered well-known client (`WELL_KNOWN_CLIENT_ID` + a fixed
+ *    `client_secret`) — for clients whose UI asks for a Client ID/Secret up
+ *    front instead of performing DCR itself (e.g. Claude Desktop's custom
+ *    connector dialog).
+ *
  * Known limitations (acceptable for a single shared workspace, not a
  * multi-tenant product): tokens live in memory and are lost on redeploy/
  * restart (same tradeoff as the MCP session transport map elsewhere in this
- * server); redirect_uri is only checked against what the client itself
- * registered via (unauthenticated) Dynamic Client Registration, so the
- * secret gate — not client registration — is the actual security boundary.
+ * server); redirect_uri is only checked against what a DCR client itself
+ * registered, and the well-known client accepts any redirect_uri outright
+ * (see `acceptAnyRedirectUri`) — in both cases the secret gate, not client/
+ * redirect registration, is the actual security boundary.
  */
 export class ArtifactHubAuthProvider implements OAuthServerProvider {
   clientsStore = new InMemoryClientsStore();
@@ -79,10 +109,24 @@ export class ArtifactHubAuthProvider implements OAuthServerProvider {
   private accessTokens = new Map<string, StoredToken>();
   private refreshTokens = new Map<string, StoredToken>();
 
-  constructor(private readonly secret: string) {}
+  constructor(
+    private readonly secret: string,
+    clientSecret: string,
+  ) {
+    this.clientsStore.registerClient({
+      client_id: WELL_KNOWN_CLIENT_ID,
+      client_secret: clientSecret,
+      client_secret_expires_at: 0,
+      redirect_uris: acceptAnyRedirectUri("http://localhost/callback"),
+      token_endpoint_auth_method: "client_secret_post",
+      grant_types: ["authorization_code", "refresh_token"],
+      response_types: ["code"],
+      client_name: "Artifact Hub (pre-registered)",
+    });
+  }
 
   async authorize(client: OAuthClientInformationFull, params: AuthorizationParams, res: Response): Promise<void> {
-    if (!client.redirect_uris.includes(params.redirectUri)) {
+    if (!client.redirect_uris.some((registered) => registered === params.redirectUri)) {
       throw new InvalidRequestError("Unregistered redirect_uri");
     }
     res.type("html").send(renderConsentForm(client, params));
@@ -101,7 +145,7 @@ export class ArtifactHubAuthProvider implements OAuthServerProvider {
 
     const client = await this.clientsStore.getClient(client_id);
     if (!client) throw new InvalidClientError("Unknown client");
-    if (!client.redirect_uris.includes(redirect_uri)) {
+    if (!client.redirect_uris.some((registered) => registered === redirect_uri)) {
       throw new InvalidRequestError("Unregistered redirect_uri");
     }
 

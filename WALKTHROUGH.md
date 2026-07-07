@@ -39,12 +39,13 @@ A step-by-step walkthrough in lieu of a screen recording. Replace
 ## 5. MCP server in Claude Desktop — ~1.5 min
 
 1. Claude Desktop → Settings → Connectors → Add custom connector.
-2. URL: `<MCP_URL>/mcp` — that's it, no header to configure. Claude Desktop
-   discovers the server's OAuth metadata automatically and opens a browser
-   tab for a one-time consent screen.
-3. On the consent screen, enter the shared access secret (provided
-   separately) and click Authorize. Claude Desktop now holds a real
-   access/refresh token pair for this server.
+2. URL: `<MCP_URL>/mcp`. If the dialog asks for a Client ID / Client Secret
+   (rather than registering itself automatically), use the pre-registered
+   pair provided separately — there's no bearer-token header to configure
+   either way.
+3. Claude Desktop opens a browser tab for a one-time consent screen. Enter
+   the shared access secret (provided separately) and click Authorize.
+   Claude Desktop now holds a real access/refresh token pair for this server.
 4. Start a new chat and ask Claude to, e.g., "list the artifacts in Artifact
    Hub" or "search Artifact Hub for X" — Claude calls `list_artifacts` /
    `search_artifacts` live against the same database as the web app.
