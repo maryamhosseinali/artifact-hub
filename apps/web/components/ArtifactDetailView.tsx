@@ -9,7 +9,8 @@ import Chip from "@mui/material/Chip";
 import ShareIcon from "@mui/icons-material/Share";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutlined";
-import type { ArtifactType } from "core";
+import FolderOutlinedIcon from "@mui/icons-material/FolderOutlined";
+import type { ArtifactType, ArtifactFolder } from "core";
 import { ArtifactViewer } from "@/components/ArtifactViewer";
 import { CommentForm } from "@/components/CommentForm";
 import { CommentList } from "@/components/CommentList";
@@ -27,6 +28,7 @@ export function ArtifactDetailView({
     type: ArtifactType;
     fileUrl: string;
     tags: string[];
+    folder: ArtifactFolder;
   };
   comments: { id: string; authorName: string; body: string; createdAt: Date }[];
 }) {
@@ -41,6 +43,12 @@ export function ArtifactDetailView({
             <Typography variant="body2" color="text.secondary" sx={{ mt: 0.75 }}>
               {artifact.description}
             </Typography>
+            <Stack direction="row" spacing={0.5} sx={{ alignItems: "center", mt: 1 }}>
+              <FolderOutlinedIcon sx={{ fontSize: 16, color: "text.secondary" }} />
+              <Typography variant="body2" color="text.secondary">
+                {artifact.folder}
+              </Typography>
+            </Stack>
             {artifact.tags.length > 0 && (
               <Stack direction="row" sx={{ flexWrap: "wrap", gap: 0.75, mt: 1.5 }}>
                 {artifact.tags.map((tag) => (

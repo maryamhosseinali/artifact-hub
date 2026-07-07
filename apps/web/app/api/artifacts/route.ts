@@ -1,5 +1,5 @@
-import { createArtifact, listArtifacts, searchArtifacts } from "core";
-import type { ArtifactType } from "core";
+import { createArtifact, listArtifacts, searchArtifacts, ARTIFACT_FOLDERS } from "core";
+import type { ArtifactType, ArtifactFolder } from "core";
 
 const VALID_TYPES: ArtifactType[] = ["html", "image", "pdf"];
 const MAX_FILE_BYTES = 20 * 1024 * 1024;
@@ -15,10 +15,14 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const type = searchParams.get("type");
   const tag = searchParams.get("tag");
+  const folder = searchParams.get("folder");
   const q = searchParams.get("q");
 
   if (type && !VALID_TYPES.includes(type as ArtifactType)) {
     return Response.json({ error: "Invalid type filter" }, { status: 400 });
+  }
+  if (folder && !ARTIFACT_FOLDERS.includes(folder as ArtifactFolder)) {
+    return Response.json({ error: "Invalid folder filter" }, { status: 400 });
   }
 
   if (q && q.trim().length > 0) {
@@ -29,6 +33,7 @@ export async function GET(request: Request) {
   const artifacts = await listArtifacts({
     type: (type as ArtifactType) || undefined,
     tag: tag || undefined,
+    folder: (folder as ArtifactFolder) || undefined,
   });
   return Response.json({ artifacts });
 }

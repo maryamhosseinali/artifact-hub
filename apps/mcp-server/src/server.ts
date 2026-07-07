@@ -14,7 +14,9 @@ import {
   getFeedbackSummary,
   listArtifacts,
   searchArtifacts,
+  ARTIFACT_FOLDERS,
   type ArtifactType,
+  type ArtifactFolder,
 } from "core";
 
 const PORT = process.env.PORT ? Number(process.env.PORT) : 3001;
@@ -53,7 +55,9 @@ function buildServer(): McpServer {
       title: "Publish artifact",
       description:
         "Publish a new artifact (HTML, image, or PDF) to Artifact Hub. If title, " +
-        "description, or tags are omitted, they are auto-generated from the content.",
+        "description, or tags are omitted, they are auto-generated from the content. " +
+        "The artifact is always auto-categorized into one folder " +
+        `(${ARTIFACT_FOLDERS.join(", ")}) — this is never set manually.`,
       inputSchema: {
         content: z
           .string()
@@ -82,6 +86,7 @@ function buildServer(): McpServer {
               title: artifact.title,
               description: artifact.description,
               tags: artifact.tags,
+              folder: artifact.folder,
               type: artifact.type,
               url: `${WEB_BASE_URL}/artifacts/${artifact.id}`,
             }),
@@ -95,14 +100,15 @@ function buildServer(): McpServer {
     "list_artifacts",
     {
       title: "List artifacts",
-      description: "List published artifacts, optionally filtered by type and/or tag.",
+      description: "List published artifacts, optionally filtered by type, tag, and/or folder.",
       inputSchema: {
         type: z.enum(["html", "image", "pdf"]).optional(),
         tag: z.string().optional(),
+        folder: z.enum(ARTIFACT_FOLDERS as [ArtifactFolder, ...ArtifactFolder[]]).optional(),
       },
     },
-    async ({ type, tag }) => {
-      const artifacts = await listArtifacts({ type: type as ArtifactType | undefined, tag });
+    async ({ type, tag, folder }) => {
+      const artifacts = await listArtifacts({ type: type as ArtifactType | undefined, tag, folder });
       return {
         content: [
           {
@@ -114,6 +120,7 @@ function buildServer(): McpServer {
                 description: a.description,
                 type: a.type,
                 tags: a.tags,
+                folder: a.folder,
                 createdAt: a.createdAt,
               })),
             ),
@@ -143,6 +150,7 @@ function buildServer(): McpServer {
                 description: a.description,
                 type: a.type,
                 tags: a.tags,
+                folder: a.folder,
               })),
             ),
           },

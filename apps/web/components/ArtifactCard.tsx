@@ -11,7 +11,8 @@ import Chip from "@mui/material/Chip";
 import CodeIcon from "@mui/icons-material/Code";
 import ImageIcon from "@mui/icons-material/Image";
 import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
-import type { ArtifactType } from "core";
+import FolderOutlinedIcon from "@mui/icons-material/FolderOutlined";
+import type { ArtifactType, ArtifactFolder } from "core";
 
 const TYPE_META: Record<ArtifactType, { label: string; icon: React.ReactElement; color: "secondary" | "accent" | "default" }> = {
   html: { label: "HTML", icon: <CodeIcon sx={{ fontSize: 15 }} />, color: "secondary" },
@@ -37,6 +38,7 @@ export function ArtifactCard({
   description,
   type,
   tags,
+  folder,
   createdAt,
 }: {
   id: string;
@@ -44,6 +46,7 @@ export function ArtifactCard({
   description: string;
   type: ArtifactType;
   tags: string[];
+  folder: ArtifactFolder;
   createdAt: Date;
 }) {
   const meta = TYPE_META[type];
@@ -70,6 +73,12 @@ export function ArtifactCard({
           >
             {description}
           </Typography>
+          <Stack direction="row" sx={{ alignItems: "center", gap: 0.5, mt: 1 }}>
+            <FolderOutlinedIcon sx={{ fontSize: 14, color: "text.secondary" }} />
+            <Typography variant="caption" color="text.secondary">
+              {folder}
+            </Typography>
+          </Stack>
           {tags.length > 0 && (
             <Box sx={{ mt: 1.5, display: "flex", flexWrap: "wrap", gap: 0.75 }}>
               {tags.slice(0, 4).map((tag) => (

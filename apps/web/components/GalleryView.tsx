@@ -11,9 +11,12 @@ import Paper from "@mui/material/Paper";
 import Grid from "@mui/material/Grid";
 import ToggleButton from "@mui/material/ToggleButton";
 import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
+import Select from "@mui/material/Select";
+import MenuItem from "@mui/material/MenuItem";
 import SearchIcon from "@mui/icons-material/Search";
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutlined";
-import type { ArtifactType } from "core";
+import { ARTIFACT_FOLDERS } from "core";
+import type { ArtifactType, ArtifactFolder } from "core";
 import { ArtifactCard } from "@/components/ArtifactCard";
 
 const TYPES: ArtifactType[] = ["html", "image", "pdf"];
@@ -25,6 +28,7 @@ type ArtifactSummary = {
   description: string;
   type: ArtifactType;
   tags: string[];
+  folder: ArtifactFolder;
   createdAt: Date;
 };
 
@@ -33,13 +37,15 @@ export function GalleryView({
   q,
   type,
   tag,
+  folder,
 }: {
   artifacts: ArtifactSummary[];
   q?: string;
   type?: string;
   tag?: string;
+  folder?: string;
 }) {
-  const hasFilters = Boolean(q || type || tag);
+  const hasFilters = Boolean(q || type || tag || folder);
 
   return (
     <Box>
@@ -91,6 +97,14 @@ export function GalleryView({
             ))}
           </ToggleButtonGroup>
           <TextField name="tag" defaultValue={tag} placeholder="Filter by tag" sx={{ width: 160 }} />
+          <Select name="folder" defaultValue={folder ?? ""} displayEmpty sx={{ minWidth: 160 }}>
+            <MenuItem value="">All folders</MenuItem>
+            {ARTIFACT_FOLDERS.map((f) => (
+              <MenuItem key={f} value={f}>
+                {f}
+              </MenuItem>
+            ))}
+          </Select>
           <Button type="submit" variant="contained" color="primary">
             Apply
           </Button>
@@ -134,7 +148,15 @@ export function GalleryView({
         <Grid container spacing={2.5}>
           {artifacts.map((a) => (
             <Grid key={a.id} size={{ xs: 12, sm: 6, lg: 4 }}>
-              <ArtifactCard id={a.id} title={a.title} description={a.description} type={a.type} tags={a.tags} createdAt={a.createdAt} />
+              <ArtifactCard
+                id={a.id}
+                title={a.title}
+                description={a.description}
+                type={a.type}
+                tags={a.tags}
+                folder={a.folder}
+                createdAt={a.createdAt}
+              />
             </Grid>
           ))}
         </Grid>

@@ -15,21 +15,33 @@ enum ArtifactType {
   pdf
 }
 
+enum ArtifactFolder {
+  Engineering
+  Design
+  Product
+  Marketing
+  Documentation
+  Business
+  Other
+}
+
 model Artifact {
-  id          String   @id @default(cuid())
+  id          String         @id @default(cuid())
   title       String
   description String
   type        ArtifactType
   fileUrl     String
   tags        String[]
+  folder      ArtifactFolder @default(Other)
   sourceTool  String?
-  createdAt   DateTime @default(now())
+  createdAt   DateTime       @default(now())
 
   comments    Comment[]
   shareLinks  ShareLink[]
 
   @@index([type])
   @@index([tags])
+  @@index([folder])
   @@index([createdAt])
 }
 

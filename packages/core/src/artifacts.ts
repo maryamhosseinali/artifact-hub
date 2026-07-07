@@ -6,21 +6,18 @@ import type { ArtifactFilter, ArtifactInput } from "./types";
 export async function createArtifact(input: ArtifactInput) {
   const { url, buffer, mimeType } = await uploadArtifactContent(input.content, input.type);
 
-  let title = input.title;
-  let description = input.description;
-  let tags = input.tags;
+  // Folder is always AI-assigned (no manual organization), so metadata generation
+  // always runs even when title/description/tags are supplied by the caller.
+  const generated = await generateArtifactMetadata({
+    type: input.type,
+    content: input.content,
+    buffer,
+    mimeType,
+  });
 
-  if (!title || !description || !tags || tags.length === 0) {
-    const generated = await generateArtifactMetadata({
-      type: input.type,
-      content: input.content,
-      buffer,
-      mimeType,
-    });
-    title ??= generated.title;
-    description ??= generated.description;
-    tags = tags && tags.length > 0 ? tags : generated.tags;
-  }
+  const title = input.title || generated.title;
+  const description = input.description || generated.description;
+  const tags = input.tags && input.tags.length > 0 ? input.tags : generated.tags;
 
   return prisma.artifact.create({
     data: {
@@ -29,6 +26,7 @@ export async function createArtifact(input: ArtifactInput) {
       type: input.type,
       fileUrl: url,
       tags,
+      folder: generated.folder,
       sourceTool: input.sourceTool,
     },
   });
@@ -39,6 +37,7 @@ export async function listArtifacts(filter: ArtifactFilter = {}) {
     where: {
       type: filter.type,
       tags: filter.tag ? { has: filter.tag } : undefined,
+      folder: filter.folder,
     },
     orderBy: { createdAt: "desc" },
   });

@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
-import type { ArtifactType } from "./types";
+import type { ArtifactType, ArtifactFolder } from "./types";
+import { ARTIFACT_FOLDERS } from "./types";
 
 const MODEL = "claude-opus-4-8";
 
@@ -15,8 +16,9 @@ const METADATA_SCHEMA = {
     title: { type: "string" as const },
     description: { type: "string" as const },
     tags: { type: "array" as const, items: { type: "string" as const } },
+    folder: { type: "string" as const, enum: ARTIFACT_FOLDERS },
   },
-  required: ["title", "description", "tags"],
+  required: ["title", "description", "tags", "folder"],
   additionalProperties: false,
 };
 
@@ -31,6 +33,7 @@ export interface GeneratedMetadata {
   title: string;
   description: string;
   tags: string[];
+  folder: ArtifactFolder;
 }
 
 export async function generateArtifactMetadata(
@@ -39,7 +42,10 @@ export async function generateArtifactMetadata(
   const instruction =
     "Look at this artifact and produce a concise, specific title (max 8 words), " +
     "a one-sentence description, and 3-6 lowercase kebab-case tags describing its " +
-    "content, purpose, and type.";
+    "content, purpose, and type (include the primary technology, discipline, or content " +
+    "category where relevant, e.g. react, api, backend, documentation). Also classify it " +
+    `into exactly one folder from this fixed set: ${ARTIFACT_FOLDERS.join(", ")}. ` +
+    "Choose the folder that best matches who would own or look for this artifact.";
 
   const contentBlock: Anthropic.Messages.ContentBlockParam =
     input.type === "html"
