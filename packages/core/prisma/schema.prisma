@@ -1,0 +1,59 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum ArtifactType {
+  html
+  image
+  pdf
+}
+
+model Artifact {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  type        ArtifactType
+  fileUrl     String
+  tags        String[]
+  sourceTool  String?
+  createdAt   DateTime @default(now())
+
+  comments    Comment[]
+  shareLinks  ShareLink[]
+
+  @@index([type])
+  @@index([tags])
+  @@index([createdAt])
+}
+
+model Comment {
+  id         String   @id @default(cuid())
+  artifactId String
+  authorName String
+  body       String
+  createdAt  DateTime @default(now())
+
+  artifact Artifact @relation(fields: [artifactId], references: [id], onDelete: Cascade)
+
+  @@index([artifactId])
+}
+
+model ShareLink {
+  id         String    @id @default(cuid())
+  artifactId String
+  token      String    @unique
+  expiresAt  DateTime
+  createdAt  DateTime  @default(now())
+
+  artifact Artifact @relation(fields: [artifactId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([artifactId])
+}
